@@ -12,6 +12,7 @@ from pysrc.services.data_service import (
     load_theta_calib,
 )
 from pysrc.services.file_service import get_path
+from pysrc.analysis.publication import save_publication_figure
 
 num_sites=1043
 
@@ -63,11 +64,11 @@ print(f"Mean:   {np.mean(gamma_R2_draws):.4f}")
 print(f"Median: {np.median(gamma_R2_draws):.4f}")
 print(f"Std:    {np.std(gamma_R2_draws):.4f}")
 
-plt.hist(gamma_R2_draws, bins=30, edgecolor='black',density=True)
+plt.hist(gamma_R2_draws, bins=30, edgecolor='black', color='#0072B2', density=True)
 plt.title(r"Bayesian $R^2$ - log(CO2e)", fontsize=16)
 plt.xlabel("$R^2$", fontsize=16)
 plt.ylabel("density", fontsize=16)
-plt.savefig(get_path("output", "figures") / f"bayesian_r2_gamma_{num_sites}.png")
+save_publication_figure(plt.gcf(), get_path("output", "figures") / f"bayesian_r2_gamma_{num_sites}.png")
 plt.close()
 
 
@@ -101,10 +102,9 @@ print(f"Median: {np.median(theta_R2_draws):.4f}")
 print(f"Std:    {np.std(theta_R2_draws):.4f}")
 
 # Plot
-plt.hist(theta_R2_draws, bins=30, edgecolor='black',density=True)
+plt.hist(theta_R2_draws, bins=30, edgecolor='black', color='#0072B2', density=True)
 plt.title(r"Bayesian $R^2$ - log(Slaughter Value)", fontsize=16)
 plt.xlabel("$R^2$", fontsize=16)
 plt.ylabel("density", fontsize=16)
-plt.savefig(get_path("output", "figures") / f"bayesian_r2_theta_{num_sites}.png")
+save_publication_figure(plt.gcf(), get_path("output", "figures") / f"bayesian_r2_theta_{num_sites}.png")
 plt.close()
-

@@ -22,6 +22,25 @@ FIGURE_INPUT_COLUMNS = [
     "source_basename",
 ]
 
+# Final PDF names requested by the upload workflow; internal sources and PNGs keep their names.
+PDF_UPLOAD_NAMES = {
+    "Figure11_aggregate_percentage_Z_b0_pehmc_6.8_pedet_6.8_xi_1.0.pdf":
+        "Figure11_agg_percentage_Z_b0_pehmc_6.8_pedet_6.8_xi_1.0.pdf",
+    "Figure13_aggregate_percentage_Z_b0_pehmc_4.8_pedet_6.8_xi_1.0_same_ylim.pdf":
+        "Figure13_aggpct_Z_b0_pehmc_4.8_pedet_6.8_xi_1.0_same_ylim.pdf",
+    "Figure13_aggregate_percentage_Z_b15_pehmc_19.8_pedet_21.8_xi_1.0_same_ylim.pdf":
+        "Figure13_aggpct_Z_b15_pehmc_19.8_pedet_21.8_xi_1.0_same_ylim.pdf",
+    "Figure15_pred_zshare_delta_comparison_1043_sites_det_delta_0p03.pdf":
+        "Figure15_pred_zshare_delta_comp_1043_sites_det_delta_0p03.pdf",
+}
+
+
+def paper_figure_format_name(filename: str, fmt: str) -> str:
+    """Resolve a paper filename for a format, including the four PDF-only aliases."""
+    original = next((old for old, new in PDF_UPLOAD_NAMES.items() if new == filename), filename)
+    name = str(Path(original).with_suffix("." + fmt))
+    return PDF_UPLOAD_NAMES.get(name, name)
+
 
 def empty_figure_inputs() -> pd.DataFrame:
     return pd.DataFrame(columns=FIGURE_INPUT_COLUMNS)
@@ -91,21 +110,23 @@ def read_or_build_paper_figure_inputs(
 
 
 def generated_figure_name_candidates(basename: str) -> list[str]:
+    suffix = Path(basename).suffix
+    png_basename = str(Path(basename).with_suffix(".png"))
     mpc_match = re.fullmatch(
         r"mpc_landallocation_b_(?P<b>\d+)_baseline_same_ylim\.png",
-        basename,
+        png_basename,
     )
     if mpc_match:
         candidates = [basename]
-        candidates.append(f"mpc_landallocation_b_{mpc_match.group('b')}_adjust.png")
+        candidates.append(f"mpc_landallocation_b_{mpc_match.group('b')}_adjust{suffix}")
     elif basename.startswith("aggregate_percentage_Z_") and basename.endswith(
-        "_same_ylim.png"
+        "_same_ylim" + suffix
     ):
-        candidates = [basename, basename.replace("_same_ylim.png", ".png")]
+        candidates = [basename, basename.replace("_same_ylim" + suffix, suffix)]
     else:
         candidates = [basename]
-        if basename.endswith("_same_ylim.png"):
-            candidates.append(basename.replace("_same_ylim.png", ".png"))
+        if basename.endswith("_same_ylim" + suffix):
+            candidates.append(basename.replace("_same_ylim" + suffix, suffix))
 
     return list(dict.fromkeys(candidates))
 

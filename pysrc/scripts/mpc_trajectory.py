@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from pysrc.services.file_service import get_path
+from pysrc.analysis.publication import LINE_WIDTH, AVERSE_STYLE, NEUTRAL_STYLE, save_publication_figure
 import os
 from pysrc.services.data_service import load_site_data
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ for b in [0,15]:
     (zbar, _, _) = load_site_data(num_sites)
 
     def read_file(result_directory):
-        
+
         Z = np.loadtxt(os.path.join(result_directory, "Z.txt"), delimiter=",")
         X = np.sum(np.loadtxt(os.path.join(result_directory, "X.txt"), delimiter=","),axis=1)
         Xdot = np.diff(X, axis=0)
@@ -100,8 +101,8 @@ for b in [0,15]:
     output_folder = str(get_path("output"))
     plt.figure()
 
-    plt.plot(time, result_zper1*100,linewidth=4,color = 'red', label=r"$\widehat{\xi}=\infty$")
-    plt.plot(time, result_zper2*100,linewidth=4,color = 'blue', label=r"$\widehat{\xi}=1$")
+    plt.plot(time, result_zper1*100,linewidth=LINE_WIDTH, **NEUTRAL_STYLE, label=r"$\widehat{\xi}=\infty$")
+    plt.plot(time, result_zper2*100,linewidth=LINE_WIDTH, **AVERSE_STYLE, marker='o', markevery=7, markersize=5.5, markeredgewidth=1.1, markerfacecolor='white', label=r"$\widehat{\xi}=1$")
     # plt.plot(time, result_zper3*100,linewidth=4,color = 'green', label=r"$\widehat{\xi}=0.5$")
 
     # plt.title("Land allocation, transfer b=0")
@@ -110,11 +111,11 @@ for b in [0,15]:
     plt.ylim(0,20)
     plt.xlim(0,50)
     plt.legend()
-    plt.savefig(os.path.join(output_folder, f"figures/mpc_landallocation_b_{b}_adjust.png"))
-    plt.savefig(
+    save_publication_figure(plt.gcf(), os.path.join(output_folder, f"figures/mpc_landallocation_b_{b}_adjust.png"))
+    save_publication_figure(plt.gcf(),
         os.path.join(
             output_folder,
             f"figures/mpc_landallocation_b_{b}_baseline_same_ylim.png",
         )
     )
-    plt.show()
+    plt.close()

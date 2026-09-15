@@ -17,6 +17,8 @@ def main() -> None:
     parser.add_argument("--solver", default="gurobi")
     parser.add_argument("--pa", type=float, default=41.11)
     parser.add_argument("--skip-optimization", action="store_true")
+    parser.add_argument("--figures-only", action="store_true",
+                        help="Only redraw Figures 5 and 6 from existing solutions.")
     args = parser.parse_args()
 
     pee_1043 = carbon_price(
@@ -24,6 +26,11 @@ def main() -> None:
             context="parameter_ambiguity", model="det", sites=1043, xi="inf"
         )
     )
+    if args.figures_only:
+        land_allocation(num_sites=1043, solver=args.solver, pee=pee_1043, pa=args.pa)
+        plot_transfers(num_sites=1043, pee=pee_1043, solver=args.solver, pa=args.pa)
+        return
+
     pee_78 = carbon_price(
         CarbonPriceKey(context="parameter_ambiguity", model="det", sites=78, xi="inf")
     )

@@ -12,6 +12,7 @@ from matplotlib.ticker import NullLocator
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from pysrc.services.file_service import get_path
+from pysrc.analysis.publication import save_publication_figure
 
 
 YEAR = "2018"
@@ -84,7 +85,7 @@ def build_plot_data(input_dir: Path, documentation_dir: Path) -> pd.DataFrame:
     return pd.concat([df, amazon], ignore_index=True)
 
 
-def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> None:
+def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> list[Path]:
     output_png.parent.mkdir(parents=True, exist_ok=True)
     output_pdf.parent.mkdir(parents=True, exist_ok=True)
 
@@ -96,7 +97,7 @@ def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> 
         df["gdp_pc_ppp_2018_100k"],
         df["emissions_pc_2018"],
         s=13,
-        c="black",
+        c="0.4",
         edgecolors="none",
         zorder=1,
     )
@@ -105,13 +106,14 @@ def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> 
         row = df[df["Country Code"].eq(code)].iloc[0]
         x = row["gdp_pc_ppp_2018_100k"]
         y = row["emissions_pc_2018"]
-        ax.scatter([x], [y], s=18, c="red", edgecolors="none", zorder=3)
-        ax.text(
-            x * 1.035,
-            y,
+        ax.scatter([x], [y], s=40, facecolors="white", edgecolors="black", linewidths=1.4, zorder=3)
+        ax.annotate(
             label,
-            color="red",
-            fontsize=10,
+            xy=(x, y),
+            xytext=(6, 0),
+            textcoords="offset points",
+            color="black",
+            fontsize=12,
             fontweight="bold",
             ha="left",
             va="center",
@@ -121,8 +123,9 @@ def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> 
     ax.scatter(
         [amazon["gdp_pc_ppp_2018_100k"]],
         [amazon["emissions_pc_2018"]],
-        s=18,
-        c="green",
+        s=35,
+        marker="^",
+        c="#007A55",
         edgecolors="none",
         zorder=3,
     )
@@ -130,7 +133,7 @@ def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> 
         amazon["gdp_pc_ppp_2018_100k"] * 1.035,
         amazon["emissions_pc_2018"],
         "Amazon",
-        color="green",
+        color="#007A55",
         fontsize=10,
         fontweight="bold",
         ha="left",
@@ -155,7 +158,7 @@ def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> 
         fontsize=13,
     )
     ax.set_ylabel(
-        "Emission per capita in 2018 (metric tons CO2e, log scale)",
+        "Emission per capita in 2018\n(metric tons CO2e, log scale)",
         fontsize=13,
     )
     ax.spines["top"].set_visible(False)
@@ -163,9 +166,9 @@ def make_figure(plot_data: pd.DataFrame, output_png: Path, output_pdf: Path) -> 
     ax.tick_params(axis="both", which="major", labelsize=10, length=3, width=0.8)
 
     fig.subplots_adjust(left=0.14, bottom=0.14, right=0.98, top=0.96)
-    fig.savefig(output_png, dpi=300)
-    fig.savefig(output_pdf)
+    written = save_publication_figure(fig, output_pdf, dpi=1200)
     plt.close(fig)
+    return written
 
 
 def main() -> int:
@@ -188,19 +191,25 @@ def main() -> int:
         type=Path,
         default=get_path("replication", "derived", "figure1_source_data.csv"),
     )
+    parser.add_argument("--plot-only", action="store_true",
+                        help="Redraw from the saved Figure 1 source-data CSV.")
     args = parser.parse_args()
 
-    plot_data = build_plot_data(args.input_dir, args.documentation_dir)
-    args.source_data_out.parent.mkdir(parents=True, exist_ok=True)
-    plot_data.to_csv(args.source_data_out, index=False)
+    if args.plot_only:
+        plot_data = pd.read_csv(args.source_data_out)
+    else:
+        plot_data = build_plot_data(args.input_dir, args.documentation_dir)
+        args.source_data_out.parent.mkdir(parents=True, exist_ok=True)
+        plot_data.to_csv(args.source_data_out, index=False)
 
     output_png = args.output_dir / "scatter_emission_gdp_log.png"
     output_pdf = args.output_dir / "scatter_emission_gdp_log.pdf"
-    make_figure(plot_data, output_png, output_pdf)
+    written = make_figure(plot_data, output_png, output_pdf)
 
-    print(f"Wrote: {output_png}")
-    print(f"Wrote: {output_pdf}")
-    print(f"Wrote: {args.source_data_out}")
+    for path in written:
+        print(f"Wrote: {path}")
+    if not args.plot_only:
+        print(f"Wrote: {args.source_data_out}")
     return 0
 
 

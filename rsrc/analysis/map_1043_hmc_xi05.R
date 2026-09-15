@@ -1,3 +1,4 @@
+source("rsrc/analysis/publication.R")
 # > PROJECT INFO
 # NAME: CARBON PRICES AND FOREST PRESERVATION OVER SPACE AND TIME IN THE BRAZILIAN AMAZON
 # LEAD: JULIANO ASSUNÇÃO, LARS PETER HANSEN, TODD MUNSON, JOSÉ A. SCHEINKMAN
@@ -149,9 +150,9 @@ z_2017_1043Sites <-
       dig.lab = 3,
       labels = c("[0]", "(0-20]", "(20-40]", "(40-60]", "(60-80]", "(80-100]")
     ))) +
-  ggplot2::geom_sf(aes(fill = z_t)) +
-  ggplot2::scale_fill_manual(name = expr(paste("Z"[!!2017]^"i", ~"(%)")), values = c("white", RColorBrewer::brewer.pal(5, "YlOrRd")), drop = FALSE) +
-  ggplot2::geom_sf(data = amazon_biome, fill = NA, color = "darkgreen", size = 1.2) +
+  ggplot2::geom_sf(aes(fill = z_t), colour = paper_grid_colour, linewidth = paper_grid_linewidth) +
+  ggplot2::scale_fill_manual(name = expr(paste("Z"[!!2017]^"i", ~"(%)")), values = paper_share_colors, drop = FALSE) +
+  ggplot2::geom_sf(data = amazon_biome, fill = NA, color = paper_border_colour, linewidth = paper_border_linewidth) +
   ggplot2::guides(fill = guide_legend(label.position = "bottom", title.position = "top", nrow = 1)) +
   ggplot2::theme(
     panel.grid.major = element_line(colour = "white"),
@@ -160,14 +161,14 @@ z_2017_1043Sites <-
     strip.background = element_rect(fill = NA),
     axis.line = element_blank(), axis.ticks = element_blank(),
     axis.title = element_blank(), axis.text = element_blank(),
-    legend.title = element_text(hjust = 0.5, size = 40, face = "bold"),
-    legend.position = "bottom", legend.margin = margin(t = -1, r = -0, b = 0.3, l = -0, unit = "cm"),
-    legend.text = element_text(size = 28, face = "bold"),
-    plot.margin = unit(c(t = -0.5, r = -1, b = -0, l = -1), "cm")
+    legend.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+    legend.position = "bottom", legend.margin = margin(0, 0, 0, 0),
+    legend.text = element_text(size = 8, face = "plain"),
+    plot.margin = margin(3, 3, 3, 3)
   )
 
 
-ggpubr::ggexport(
+save_paper_map(
   plot = z_2017_1043Sites,   
   filename = here::here(glue::glue("plots/1043-hmc_xi05/z0.png")),  
   width = 2400,   
@@ -196,9 +197,9 @@ for (price in aux.prices) {
         dig.lab = 3,
         labels = c("[0]", "(0-20]", "(20-40]", "(40-60]", "(60-80]", "(80-100]")
       ))) +
-    ggplot2::geom_sf(aes(fill = z_t)) +
-    ggplot2::scale_fill_manual(name = expr(paste("Z"[2047]^"i", ~"(%), ", "b", "=", !!transfer)), values = c("white", RColorBrewer::brewer.pal(5, "YlOrRd")), drop = FALSE) +
-    ggplot2::geom_sf(data = amazon_biome, fill = NA, color = "darkgreen", size = 1.2) +
+    ggplot2::geom_sf(aes(fill = z_t), colour = paper_grid_colour, linewidth = paper_grid_linewidth) +
+    ggplot2::scale_fill_manual(name = expr(paste("Z"[2047]^"i", ~"(%), ", "b", "=", !!transfer)), values = paper_share_colors, drop = FALSE) +
+    ggplot2::geom_sf(data = amazon_biome, fill = NA, color = paper_border_colour, linewidth = paper_border_linewidth) +
  #   ggplot2::geom_point(data = sites_to_circle, aes(x = x, y = y),
   #                      color = "blue", size = 5, shape = 21, fill = NA, stroke = 4) +
     ggplot2::guides(fill = guide_legend(label.position = "bottom", title.position = "top", nrow = 1)) +
@@ -209,15 +210,15 @@ for (price in aux.prices) {
       strip.background = element_rect(fill = NA),
       axis.line = element_blank(), axis.ticks = element_blank(),
       axis.title = element_blank(), axis.text = element_blank(),
-      legend.title = element_text(hjust = 0.5, size = 40, face = "bold"),
-      legend.position = "bottom", legend.margin = margin(t = -1, r = -0, b = 0.3, l = -0, unit = "cm"),
-      legend.text = element_text(size = 28, face = "bold"),
-      plot.margin = unit(c(t = -0.5, r = -1, b = -0, l = -1), "cm")
+      legend.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+      legend.position = "bottom", legend.margin = margin(0, 0, 0, 0),
+      legend.text = element_text(size = 8, face = "plain"),
+      plot.margin = margin(3, 3, 3, 3)
     )
 
   # SAVE MAP Z0, Z50, GAMMA, THETA
   ggpubr::ggarrange(mapList[[mapIndex]]) %>%
-    ggpubr::ggexport(
+    save_paper_map(
       filename = here::here(glue::glue("plots/1043-hmc_xi05/map_z30_1043Sites_pe{price}.png")),
       width = 2400, height = 1500
     )
@@ -234,7 +235,7 @@ ggpubr::ggarrange(z_2017_1043Sites,
   mapList[[1]], mapList[[3]], mapList[[5]],
   ncol = 4, nrow = 1
 ) %>%
-  ggpubr::ggexport(
+  save_paper_map(
     filename = here::here(glue::glue("plots/1043-hmc_xi05/map_z0z30GammaTheta_1043Sites_allPrices_det.png")),
     width = 2700, height = 800
   )
@@ -262,9 +263,9 @@ for (p in seq_along(aux.prices)) {
           dig.lab = 3,
           labels = c("[0]", "(0-20]", "(20-40]", "(40-60]", "(60-80]", "(80-100]")
         ))) +
-      ggplot2::geom_sf(aes(fill = z_t), show.legend = TRUE) +
-      ggplot2::scale_fill_manual(name = expr(paste("Z"[!!aux.years[y]]^"i", ~"(%), ", "b", "=", !!transfer)), values = c("white", RColorBrewer::brewer.pal(5, "YlOrRd")), drop = FALSE) +
-      ggplot2::geom_sf(data = amazon_biome, fill = NA, color = "darkgreen", size = 1.2) +
+      ggplot2::geom_sf(aes(fill = z_t), colour = paper_grid_colour, linewidth = paper_grid_linewidth, show.legend = TRUE) +
+      ggplot2::scale_fill_manual(name = expr(paste("Z"[!!aux.years[y]]^"i", ~"(%), ", "b", "=", !!transfer)), values = paper_share_colors, drop = FALSE) +
+      ggplot2::geom_sf(data = amazon_biome, fill = NA, color = paper_border_colour, linewidth = paper_border_linewidth) +
    #   ggplot2::geom_point(data = sites_to_circle, aes(x = x, y = y),
     #                      color = "blue", size = 10, shape = 21, fill = NA, stroke = 3) +
       ggplot2::guides(fill = guide_legend(label.position = "bottom", title.position = "top", nrow = 1)) +
@@ -275,10 +276,10 @@ for (p in seq_along(aux.prices)) {
         strip.background = element_rect(fill = NA),
         axis.line = element_blank(), axis.ticks = element_blank(),
         axis.title = element_blank(), axis.text = element_blank(),
-        legend.title = element_text(hjust = 0.5, size = 40, face = "bold"),
-        legend.position = "bottom", legend.margin = margin(t = -1, r = -0, b = 0.3, l = -0, unit = "cm"),
-        legend.text = element_text(size = 28, face = "bold"),
-        plot.margin = unit(c(t = -0.5, r = -1, b = -0, l = -1), "cm")
+        legend.title = element_text(hjust = 0.5, size = 12, face = "bold"),
+        legend.position = "bottom", legend.margin = margin(0, 0, 0, 0),
+        legend.text = element_text(size = 8, face = "plain"),
+        plot.margin = margin(3, 3, 3, 3)
       )
   }
 
@@ -286,15 +287,16 @@ for (p in seq_along(aux.prices)) {
   ggpubr::ggarrange( aux.mapList[[3]], aux.mapList[[7]],
     ncol = 2, nrow = 1
   ) %>%
-    ggpubr::ggexport(
+    save_paper_map(
       filename = here::here(glue::glue("plots/1043-hmc_xi05/map_hmc_pe_{aux.prices[p]}.png")),
       width = 2700, height = 1500
     )
-  ggpubr::ggarrange( aux.mapList[[1]], aux.mapList[[2]], aux.mapList[[3]],
-                    aux.mapList[[4]], aux.mapList[[5]], aux.mapList[[7]],
-                    ncol = 3, nrow = 2
+  ggpubr::ggarrange(
+    plotlist = lapply(list(aux.mapList[[1]], aux.mapList[[2]], aux.mapList[[3]],
+                          aux.mapList[[4]], aux.mapList[[5]], aux.mapList[[7]]), paper_share_panel),
+    ncol = 3, nrow = 2, common.legend = TRUE, legend = "bottom"
   ) %>%
-    ggpubr::ggexport(
+    save_paper_map(
       filename = here::here(glue::glue("plots/1043-hmc_xi05/map_zDecades_1043Sites_pe{aux.prices[p]}_hmc.png")),
       width = 2700, height = 1500
     )

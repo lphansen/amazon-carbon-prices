@@ -8,6 +8,10 @@ import seaborn as sns
 
 from pysrc.services.data_service import load_site_data
 from pysrc.services.file_service import get_path
+from pysrc.analysis.publication import (
+    AVERSE_STYLE, NEUTRAL_STYLE, TRANSFER_STYLES, LINE_WIDTH,
+    save_publication_figure, shade_under_line,
+)
 
 
 def land_allocation(pee=7.6, num_sites=1043, solver="gurobi", pa=41.11, model="det", xi=1):
@@ -20,7 +24,7 @@ def land_allocation(pee=7.6, num_sites=1043, solver="gurobi", pa=41.11, model="d
     # Get z_bar data
     output_folder = get_path("output") / "figures"
     os.makedirs(output_folder, exist_ok=True)
-    
+
     # Load site data
     (zbar, _, _) = load_site_data(num_sites)
 
@@ -86,18 +90,12 @@ def land_allocation(pee=7.6, num_sites=1043, solver="gurobi", pa=41.11, model="d
     plt.plot([], [], " ", label=custom_labels[0])
     for i in range(5):
         if i in [0, 2, 4]:
-            if i == 0:
-                color = "red"
-            elif i == 2:
-                color = "green"
-            elif i == 4:
-                color = "blue"
             plt.plot(
                 time,
                 variable_dict[f"results_zper{i}"],
                 label=custom_labels[i + 1],
-                linewidth=4,
-                color=color,
+                linewidth=LINE_WIDTH,
+                **TRANSFER_STYLES[b[i]],
             )
 
     plt.xlabel("years", fontsize=16)
@@ -111,7 +109,7 @@ def land_allocation(pee=7.6, num_sites=1043, solver="gurobi", pa=41.11, model="d
         frameon=False,
         fontsize=16,
     )
-    plt.savefig(
+    save_publication_figure(plt.gcf(),
         output_folder / f"pred_zshare_{num_sites}_sites_det.png",
         format="png",
         bbox_inches="tight",
@@ -123,18 +121,12 @@ def land_allocation(pee=7.6, num_sites=1043, solver="gurobi", pa=41.11, model="d
     plt.plot([], [], " ", label=custom_labels[0])
     for i in range(5):
         if i in [0, 2, 4]:
-            if i == 0:
-                color = "red"
-            elif i == 2:
-                color = "green"
-            elif i == 4:
-                color = "blue"
             plt.plot(
                 time,
                 variable_dict[f"results_xagg{i}"]-variable_dict[f"results_xagg{i}"][0],
                 label=custom_labels[i + 1],
-                linewidth=4,
-                color=color,
+                linewidth=LINE_WIDTH,
+                **TRANSFER_STYLES[b[i]],
             )
     # move x-axis to y = 0
     ax.spines["bottom"].set_position(("data", 0))
@@ -156,7 +148,7 @@ def land_allocation(pee=7.6, num_sites=1043, solver="gurobi", pa=41.11, model="d
         frameon=False,
         fontsize=18,
     )
-    plt.savefig(
+    save_publication_figure(plt.gcf(),
         str(output_folder) + f"/plot_pred_x_{num_sites}_sites_det.png",
         format="png",
         bbox_inches="tight",
@@ -247,7 +239,7 @@ def density(
             # f"pa_{pa}",
             # "xi_10000.0",
         )
-    
+
     with open(result_folder + f"/pe_{pee}/results.pcl", "rb") as f:
         b0 = pickle.load(f)
 
@@ -284,63 +276,72 @@ def density(
     print("gamma density sites:", [idx + 1 for idx in gamma_sites_to_plot])
     print("theta density sites:", [idx + 1 for idx in theta_sites_to_plot])
 
+    shade_alpha = 0.30 if np.isclose(float(xi), 1.0) else 0.18
     for idx in gamma_sites_to_plot:
         fig, axes = plt.subplots(1, 1, figsize=(8, 6))
-        
+
         sns.kdeplot(
             gamma_unadjusted[:, idx],
             label="baseline",
-            color="black",
+            color="#0072B2",
+            linestyle="-",
+            zorder=3,
             fill=False,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright blue
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
         sns.kdeplot(
             gamma_adjusted_b0[:, idx],
             label="b=0",
-            color="blue",
-            fill=True,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright red
-        plt.title(rf"Probability density for $\gamma$ and site {idx+1}", fontsize=16)
+            color="#D55E00",
+            linestyle="--",
+            zorder=2,
+            fill=False,
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
+        shade_under_line(axes, axes.lines[-1], alpha=shade_alpha)
         plt.xlabel("parameter value", fontsize=16)
         plt.ylabel("density", fontsize=16)
         plt.legend(fontsize=16)
         plt.xlim(450,650)
         file_name = os.path.join(output_folder, f"gamma_distribution_{idx+1}_b0_xi_{xi}.png")
-        fig.savefig(file_name, format="png")
+        save_publication_figure(fig, file_name, format="png")
         plt.close()
-        
-        
-        
-        
+
+
+
+
         fig, axes = plt.subplots(1, 1, figsize=(8, 6))
-        
+
         sns.kdeplot(
             gamma_unadjusted[:, idx],
             label="baseline",
-            color="black",
+            color="#0072B2",
+            linestyle="-",
+            zorder=3,
             fill=False,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright blue
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
         sns.kdeplot(
             gamma_adjusted_b15[:, idx],
             label="b=15",
-            color="blue",
-            fill=True,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright red
+            color="#D55E00",
+            linestyle="--",
+            zorder=2,
+            fill=False,
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
+        shade_under_line(axes, axes.lines[-1], alpha=shade_alpha)
 
-        plt.title(rf"Probability density for $\gamma$ and site {idx+1}", fontsize=16)
         plt.xlabel("parameter value", fontsize=16)
         plt.ylabel("density", fontsize=16)
         plt.legend(fontsize=16)
         plt.xlim(350,550)
         file_name = os.path.join(output_folder, f"gamma_distribution_{idx+1}_b15_xi_{xi}.png")
-        fig.savefig(file_name, format="png")
+        save_publication_figure(fig, file_name, format="png")
         plt.close()
 
     for idx in theta_sites_to_plot:
@@ -350,57 +351,65 @@ def density(
         sns.kdeplot(
             theta_unadjusted[:, idx],
             label="baseline",
-            color="black",
+            color="#0072B2",
+            linestyle="-",
+            zorder=3,
             fill=False,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright blue
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
         sns.kdeplot(
             theta_adjusted_b0[:, idx],
             label="b=0",
-            color="red",
-            fill=True,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright red
-        
-        plt.title(rf"Probability density for $\Theta$ and site {idx+1}", fontsize=16)
+            color="#D55E00",
+            linestyle="--",
+            zorder=2,
+            fill=False,
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
+        shade_under_line(axes, axes.lines[-1], alpha=shade_alpha)
+
         plt.xlabel("parameter value", fontsize=16)
         plt.ylabel("density", fontsize=16)
         plt.legend(fontsize=16)
         plt.xlim(0,10)
         file_name = os.path.join(output_folder, f"theta_distribution_{idx+1}_b0_xi_{xi}.png")
-        fig.savefig(file_name, format="png")
+        save_publication_figure(fig, file_name, format="png")
         plt.close()
-        
-        
-        
+
+
+
         fig, axes = plt.subplots(1, 1, figsize=(8, 6))
 
         sns.kdeplot(
             theta_unadjusted[:, idx],
             label="baseline",
-            color="black",
+            color="#0072B2",
+            linestyle="-",
+            zorder=3,
             fill=False,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright blue
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
         sns.kdeplot(
             theta_adjusted_b15[:, idx],
             label="b=15",
-            color="red",
-            fill=True,
-            alpha=0.6,
-            linewidth=4,
-        )  # Bright red
+            color="#D55E00",
+            linestyle="--",
+            zorder=2,
+            fill=False,
+            alpha=1,
+            linewidth=LINE_WIDTH,
+        )
+        shade_under_line(axes, axes.lines[-1], alpha=shade_alpha)
 
-        plt.title(rf"Probability density for $\Theta$ and site {idx+1}", fontsize=16)
         plt.xlabel("parameter value", fontsize=16)
         plt.ylabel("density", fontsize=16)
         plt.legend(fontsize=16)
         plt.xlim(1,8)
         file_name = os.path.join(output_folder, f"theta_distribution_{idx+1}_b15_xi_{xi}.png")
-        fig.savefig(file_name, format="png")
+        save_publication_figure(fig, file_name, format="png")
         plt.close()
     return
 
@@ -463,8 +472,9 @@ def trajectory_diff(
     time = list(range(0, len(result_zper_hmc)))
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    ax.plot(time, result_zper_hmc, label=rf"$\xi$={xi}", linewidth=4, color="blue")
-    ax.plot(time, result_zper_det, label=r"$\xi=\infty$", linewidth=4, color="red")
+    ax.plot(time, result_zper_hmc, label=rf"$\xi$={xi}", linewidth=LINE_WIDTH, **AVERSE_STYLE,
+            marker="o", markevery=8, markersize=5.5, markeredgewidth=1.1, markerfacecolor="white")
+    ax.plot(time, result_zper_det, label=r"$\xi=\infty$", linewidth=LINE_WIDTH, **NEUTRAL_STYLE)
     ax.set_xlabel("years", fontsize=16)
     ax.set_ylabel("Z(%)", fontsize=16)
     ax.set_xlim(0, max(time) + 2)
@@ -482,10 +492,10 @@ def trajectory_diff(
     figure_ylim = (12, 24) if is_figure11 else (0, 24)
 
     ax.set_ylim(*figure_ylim)
-    fig.savefig(output_path)
+    save_publication_figure(fig, output_path)
 
     ax.set_ylim(0, 24)
-    plt.savefig(output_path.replace(".png", "_same_ylim.png"))
+    save_publication_figure(plt.gcf(), output_path.replace(".png", "_same_ylim.png"))
     plt.close(fig)
 
     return
@@ -497,12 +507,8 @@ def plot_transfers(num_sites=1043, pee=6.6, pa=41.11, solver="gams", kappa=2.094
 
     plt.figure(figsize=(6.4, 4.8))
     for b in [15, 25]:
-        
-        if b==15:
-            color = "blue"
-        elif b==25:
-            color = "red"
-        
+
+
         pe = pee + b
         result_folder = (
             get_path("output")
@@ -533,7 +539,7 @@ def plot_transfers(num_sites=1043, pee=6.6, pa=41.11, solver="gams", kappa=2.094
         transfers = -b * (kappa * Z[1:] - X_dot).sum(axis=1)
 
         # Plotting transfers
-        plt.plot(transfers[:50], label=f"b=${b}",linewidth=4,color=color)
+        plt.plot(transfers[:50], label=f"b=${b}", linewidth=LINE_WIDTH, **TRANSFER_STYLES[b])
 
     # Adding legend
     plt.legend()
@@ -543,5 +549,5 @@ def plot_transfers(num_sites=1043, pee=6.6, pa=41.11, solver="gams", kappa=2.094
     plt.ylabel("Net Transfers ($ billion)")
 
     # Save figure
-    plt.savefig(output_folder / "net_transfers.png")
+    save_publication_figure(plt.gcf(), output_folder / "net_transfers.png")
     plt.close()

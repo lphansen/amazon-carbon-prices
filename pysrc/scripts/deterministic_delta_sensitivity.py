@@ -26,6 +26,7 @@ from pysrc.optimization import PlannerSolution, solve_planner_problem
 from pysrc.replication.parameters import CarbonPriceKey, carbon_price, load_carbon_prices, normalize_xi
 from pysrc.services.data_service import load_productivity_params, load_site_data
 from pysrc.services.file_service import get_path
+from pysrc.analysis.publication import LINE_WIDTH, save_publication_figure
 
 
 @dataclass(frozen=True)
@@ -351,7 +352,7 @@ def plot_zshare_delta_comparison_figure(
         )
         return
 
-    colors = {0.0: "red", 25.0: "blue"}
+    markers = {0.0: "o", 25.0: "s"}
     delta_specs = [
         (base_delta, "-", base_solutions),
         (sensitivity_delta, "--", sensitivity_solutions),
@@ -367,9 +368,11 @@ def plot_zshare_delta_comparison_figure(
                 time,
                 metrics.z_share_pct,
                 label=rf"$b={format_number(transfer)}, \delta={delta:.2f}$",
-                linewidth=4,
+                linewidth=LINE_WIDTH,
                 linestyle=linestyle,
-                color=colors.get(transfer),
+                color="#D55E00" if transfer == 0 else "#0072B2",
+                marker=markers[transfer], markerfacecolor="white", markersize=5.5, markeredgewidth=1.1,
+                markevery=(0 if delta == base_delta else 3, 8),
             )
 
     ax.set_xlabel("years", fontsize=16)
@@ -391,11 +394,11 @@ def plot_zshare_delta_comparison_figure(
         fontsize=16,
     )
 
-    fig.savefig(
+    save_publication_figure(fig,
         output_dir
         / f"pred_zshare_delta_comparison_{sites}_sites_det_{delta_slug(sensitivity_delta)}.png",
         format="png",
-        dpi=100,
+        dpi=1200,
         bbox_inches="tight",
         pad_inches=0.08,
     )
@@ -680,7 +683,35 @@ def main() -> int:
             "`derive-prices-det-delta-sensitivity`."
         ),
     )
+    parser.add_argument("--plot-only", action="store_true",
+                        help="Redraw Figure 15 from saved solutions without solving or updating tables.")
     args = parser.parse_args()
+
+    if args.plot_only:
+        for sites in args.sites:
+            zbar, _, _ = load_site_data(sites)
+            key = CarbonPriceKey(context="parameter_ambiguity", model="det", sites=sites, xi="inf")
+            base_pee = carbon_price(key)
+            sensitivity_pee, _ = carbon_price_with_metric(key, args.sensitivity_prices)
+            base_solutions = {
+                b: load_solution(baseline_solution_dir(
+                    outputs_root=args.baseline_outputs_root, solver=args.solver,
+                    sites=sites, pa=args.pa, pe=base_pee + b,
+                )) for b in (0.0, 25.0)
+            }
+            sensitivity_solutions = {
+                b: load_solution(solution_dir(
+                    outputs_root=args.outputs_root, delta=args.sensitivity_delta,
+                    solver=args.solver, sites=sites, pa=args.pa, pe=sensitivity_pee + b,
+                )) for b in (0.0, 25.0)
+            }
+            plot_zshare_delta_comparison_figure(
+                sites=sites, base_delta=args.base_delta,
+                sensitivity_delta=args.sensitivity_delta, outputs_root=args.outputs_root,
+                zbar=zbar, years=args.years, base_solutions=base_solutions,
+                sensitivity_solutions=sensitivity_solutions,
+            )
+        return 0
 
     if args.years > args.time_horizon:
         raise ValueError("--years cannot exceed --time-horizon.")

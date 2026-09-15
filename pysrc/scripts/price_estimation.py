@@ -1,4 +1,7 @@
-import numpy as np 
+import argparse
+import json
+import re
+import numpy as np
 import pandas as pd
 import os
 from hmmlearn import hmm
@@ -12,6 +15,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.dates as mdates
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from pysrc.analysis.publication import LINE_WIDTH, save_publication_figure
+from pysrc.services.file_service import get_path
 
 Path("output/tables").mkdir(parents=True, exist_ok=True)
 Path("output/figures").mkdir(parents=True, exist_ok=True)
@@ -73,14 +80,12 @@ def information_criteria(result_uncon, result_con):
     return table
 
 
-def plot_hmm_results(mu,predict, price, var):
-    
-    if mu[0]>mu[1]:
-        predict = predict[:,0]
-    else:
-        predict = predict[:,1]
-    predict = predict 
-    price = price  
+def plot_hmm_results(mu, predict, price, var, *, save_inputs=True):
+
+    if predict.ndim == 2:
+        predict = predict[:, np.argmax(mu)]
+    predict = predict
+    price = price
 
     start_date = '1995-01'
     dates = pd.date_range(start=start_date, periods=276, freq='M')
@@ -91,15 +96,19 @@ def plot_hmm_results(mu,predict, price, var):
     })
 
     # Save to CSV
-    df.to_csv(f'output/tables/smooth_prob_{var}.csv', index=False)
+    if save_inputs:
+        df.to_csv(f'output/tables/smooth_prob_{var}.csv', index=False)
+        Path(f"output/tables/hmm_plot_means_{var}.json").write_text(
+            json.dumps({"mu": [float(value) for value in mu]}, indent=2) + "\n"
+        )
 
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
     # Plot the first dataset with the left y-axis (ax1)
-    ax1.plot(dates, predict, linewidth=4, label='high state probability', color='b')
+    ax1.plot(dates, predict, linewidth=LINE_WIDTH, label='high state probability (left axis)', color='#0072B2')
     ax1.set_xlabel('time')
-    ax1.set_ylabel('smoothed probability', color='b',fontsize=16)
-    ax1.tick_params(axis='y', labelcolor='b')
+    ax1.set_ylabel('smoothed probability', color='black',fontsize=16)
+    ax1.tick_params(axis='y', labelcolor='black')
 
     ax1.xaxis.set_major_locator(mdates.YearLocator(base=5))  # Major ticks every 5 years
     ax1.xaxis.set_minor_locator(mdates.YearLocator(base=1))  # Minor ticks every year
@@ -108,47 +117,47 @@ def plot_hmm_results(mu,predict, price, var):
     ax2 = ax1.twinx()
 
     # Plot the second dataset with the right y-axis (ax2)
-    ax2.plot(dates, price, linewidth=4, label='Actual Price', color='r')
-    ax2.set_ylabel('actual Price', color='r',fontsize=16)
-    ax2.tick_params(axis='y', labelcolor='r')
+    ax2.plot(dates, price, linewidth=LINE_WIDTH, linestyle='--', label='actual price (right axis)', color='#D55E00')
+    ax2.set_ylabel('actual Price', color='black',fontsize=16)
+    ax2.tick_params(axis='y', labelcolor='black')
 
     if mu[0]>mu[1]:
-        ax2.axhline(y=mu[0], color='g', linestyle='--', label='high price')
-        ax2.axhline(y=mu[1], color='orange', linestyle='--', label='low price')
+        ax2.axhline(y=mu[0], color='#009E73', linestyle='-.', linewidth=2.4, label='high price (right axis)')
+        ax2.axhline(y=mu[1], color='#8E44AD', linestyle=':', linewidth=2.4, label='low price (right axis)')
     else:
-        ax2.axhline(y=mu[0], color='orange', linestyle='--', label='low price')
-        ax2.axhline(y=mu[1], color='g', linestyle='--', label='high price')
+        ax2.axhline(y=mu[0], color='#8E44AD', linestyle=':', linewidth=2.4, label='low price (right axis)')
+        ax2.axhline(y=mu[1], color='#009E73', linestyle='-.', linewidth=2.4, label='high price (right axis)')
 
     # Add legends
     lines1, labels1 = ax1.get_legend_handles_labels()
     lines2, labels2 = ax2.get_legend_handles_labels()
     lines = lines1 + lines2
     labels = labels1 + labels2
-    ax1.legend(lines, labels, loc='lower left',fontsize=13)
+    ax1.legend(lines, labels, loc='lower left',fontsize=10, framealpha=1)
 
     plt.xticks(rotation=45)
-    plt.savefig(f'output/figures/smooth_prob_{var}.png', format='png', bbox_inches='tight')
+    save_publication_figure(fig, f'output/figures/smooth_prob_{var}.png', format='png', bbox_inches='tight')
     plt.close()
 
 def est(s_low=0.5,s_high=0.5,var='uncon'):
     step_start = time.time()
     log(f"start HMM fit block var={var}, startprob=({s_low:.6f}, {s_high:.6f})")
-    
+
     warnings.filterwarnings("ignore", message="KMeans is known to have a memory leak on Windows with MKL, when there are less chunks than available threads. You can avoid it by setting the environment variable OMP_NUM_THREADS=2.")
 
-    
+
     # need to input initial state prob s_low and s_high
     data_folder = os.getcwd()+"/data/calibration/"
-    
+
     # read data
     df = pd.read_csv(data_folder+"seriesPriceCattle_prepared.csv")
-    price = df['price_real_mon_cattle'].values.astype(float) 
+    price = df['price_real_mon_cattle'].values.astype(float)
     logprice=np.log(price)
     log(f"loaded {len(logprice)} monthly prices for var={var}")
-    
-    
+
+
     # estimating the model
-    
+
     Q=logprice.reshape(logprice.shape[0],1)
 
     np.random.seed(12345)
@@ -162,7 +171,7 @@ def est(s_low=0.5,s_high=0.5,var='uncon'):
             model = hmm.GaussianHMM(n_components=2,random_state=idx,init_params='tmc',params='stmc')
         else:
             model = hmm.GaussianHMM(n_components=2,random_state=idx,init_params='tmc',params='stmc',covariance_type='tied')
-            
+
         model.startprob_= np.array([s_low, s_high])
         with suppress_output():
             model.fit(Q)
@@ -178,13 +187,13 @@ def est(s_low=0.5,s_high=0.5,var='uncon'):
                 f"var={var} completed {idx + 1}/{n_fits} fits; "
                 f"best_score={best_score:.6f}; elapsed={elapsed:.1f}s"
             )
-      
+
     aic = best_model.aic(Q)
     bic = best_model.bic(Q)
-    mus = np.exp(np.ravel(best_model.means_))  
+    mus = np.exp(np.ravel(best_model.means_))
     sigmas = np.ravel(np.sqrt([np.diag(c) for c in best_model.covars_]))
     P = np.round(best_model.transmat_,3)
-    
+
     sorted_indices = np.argsort(mus)
     mus_sorted = mus[sorted_indices]
     sigmas_sorted = sigmas[sorted_indices]
@@ -194,25 +203,25 @@ def est(s_low=0.5,s_high=0.5,var='uncon'):
         ll = (best_model.aic(Q)-12)/(-2)
     else:
         ll = (best_model.aic(Q)-10)/(-2)
-        
-        
+
+
     plot_hmm_results(mus,predict, price, var)
     log(f"finished HMM fit block var={var}; elapsed={time.time() - step_start:.1f}s")
-        
-    
+
+
     return(aic,ll,bic,mus_sorted,sigmas_sorted,P_sorted)
 
 
 
 
 def stationary(transition_matrix,mus):
-    
+
     eigenvals, eigenvects = np.linalg.eig(transition_matrix.T)
     close_to_1_idx = np.isclose(eigenvals,1)
     target_eigenvect = eigenvects[:,close_to_1_idx]
     target_eigenvect = target_eigenvect[:,0]
     stationary_distrib = target_eigenvect / sum(target_eigenvect)
-    stationary_price=mus[0]*stationary_distrib[0]+mus[1]*stationary_distrib[1] 
+    stationary_price=mus[0]*stationary_distrib[0]+mus[1]*stationary_distrib[1]
     return(stationary_distrib,stationary_price)
 
 
@@ -225,15 +234,15 @@ def annual_transition(transition_matrix):
 
 
 def iteration_est(initial_prob, num_iterations=5,var='uncon'):
-    
-    
+
+
     for i in range(num_iterations):
         log(f"start stationary iteration {i + 1}/{num_iterations} for var={var}")
         if i == 0:
             s_low, s_high = initial_prob[0], initial_prob[1]
         else:
             s_low, s_high = sta_dist[0], sta_dist[1]
-        
+
         aic, ll, bic, mus, sigmas, P = est(s_low, s_high, var)
         sta_dist, sta_price = stationary(P, mus)
         annual_P=annual_transition(P)
@@ -241,30 +250,69 @@ def iteration_est(initial_prob, num_iterations=5,var='uncon'):
             f"finished stationary iteration {i + 1}/{num_iterations} for var={var}; "
             f"stationary_price={sta_price:.6f}"
         )
-        
+
     return aic,ll,bic,mus,sigmas,P,sta_dist,sta_price,annual_P
-    
-    
 
 
 
-log("starting HMM price estimation")
-result_uncon = iteration_est([0.5, 0.5], num_iterations=5, var='uncon')
-result_con = iteration_est([0.5, 0.5], num_iterations=5, var='con')
-
-print("distinct variances",   result_uncon)
-print("common variances",   result_con)
-
-latex_table = format_latex_table(result_uncon, result_con)
-information_table = information_criteria(result_uncon, result_con)
 
 
-# Save to file
-with open("output/tables/hmm_results_table.tex", "w") as f:
-    f.write(latex_table)
-    
+def redraw_cached_figures():
+    price = pd.read_csv(get_path("data", "calibration", "seriesPriceCattle_prepared.csv"))[
+        "price_real_mon_cattle"
+    ].to_numpy()
+    log_path = get_path("job-outs", "stage_hmm", "price_estimation", "0001_run.out")
+    for var, label in [("uncon", "distinct variances"), ("con", "common variances")]:
+        predict = pd.read_csv(get_path("output", "tables", f"smooth_prob_{var}.csv"))[
+            "predict"
+        ].to_numpy()
+        means_path = get_path("output", "tables", f"hmm_plot_means_{var}.json")
+        if means_path.exists():
+            mu = np.asarray(json.loads(means_path.read_text())["mu"])
+        else:
+            # Archived runs predate the full-precision plot cache.
+            # The first printed array in each final result contains the two means.
+            match = re.search(
+                re.escape(label) + r"[^\n]*?array\(\[([^\]]+)\]",
+                log_path.read_text(),
+            )
+            if match is None:
+                raise ValueError(f"Missing final {label} means in {log_path}")
+            mu = np.fromstring(match.group(1), sep=",")
+            log(f"Using archived printed means for {var}: {mu}; precision is limited to the log.")
+        plot_hmm_results(mu, predict, price, var, save_inputs=False)
 
-with open("output/tables/hmm_information_criteria.tex", "w") as f:
-    f.write(information_table)
 
-log("finished HMM price estimation")
+def main():
+    parser = argparse.ArgumentParser(description="Estimate the cattle-price HMM or redraw cached figures.")
+    parser.add_argument("--plot-only", action="store_true",
+                        help="Redraw Figure 16 from cached probabilities, prices and means.")
+    args = parser.parse_args()
+    if args.plot_only:
+        redraw_cached_figures()
+        return
+
+    log("starting HMM price estimation")
+    result_uncon = iteration_est([0.5, 0.5], num_iterations=5, var='uncon')
+    result_con = iteration_est([0.5, 0.5], num_iterations=5, var='con')
+
+    print("distinct variances",   result_uncon)
+    print("common variances",   result_con)
+
+    latex_table = format_latex_table(result_uncon, result_con)
+    information_table = information_criteria(result_uncon, result_con)
+
+
+    # Save to file
+    with open("output/tables/hmm_results_table.tex", "w") as f:
+        f.write(latex_table)
+
+
+    with open("output/tables/hmm_information_criteria.tex", "w") as f:
+        f.write(information_table)
+
+    log("finished HMM price estimation")
+
+
+if __name__ == "__main__":
+    main()

@@ -53,6 +53,10 @@ def main() -> None:
     parser.add_argument("--solver", default="gurobi")
     parser.add_argument("--pa", type=float, default=41.11)
     parser.add_argument("--skip-optimization", action="store_true")
+    parser.add_argument("--gamma-sites", type=int, nargs="+", default=None,
+                        help="Explicit gamma density site IDs; use 938 929 for the paper figures.")
+    parser.add_argument("--theta-sites", type=int, nargs="+", default=None,
+                        help="Explicit theta density site IDs; use 985 1028 for the paper figures.")
     parser.add_argument("--all", action="store_true")
     parser.add_argument(
         "--tables",
@@ -123,7 +127,9 @@ def main() -> None:
             )
 
         if "density" in args.figures:
-            density(num_sites=1043, pee=hmc_pee, xi=xi, solver=args.solver, pa=args.pa)
+            density(num_sites=1043, pee=hmc_pee, xi=xi, solver=args.solver, pa=args.pa,
+                    gamma_sites_to_plot=args.gamma_sites,
+                    theta_sites_to_plot=args.theta_sites)
         if "trajectories" in args.figures:
             if _needs_common_price_figures(xi, args.figures):
                 trajectory_diff(

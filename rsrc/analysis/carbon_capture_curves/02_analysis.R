@@ -1,5 +1,7 @@
 # Carbon capture curve: ratio = AGB/gamma ~ 1 - exp(-alpha * t)
 
+source("rsrc/analysis/publication.R")
+
 library(tidyverse)
 library(ggplot2)
 
@@ -45,28 +47,28 @@ emp_plot <- emp_df %>% mutate(type = "Estimates from data")
 dir.create("output/figures/carbon_capture", recursive = TRUE, showWarnings = FALSE)
 
 p_main <- ggplot() +
-  geom_line(data = emp_plot, aes(x = age_bin, y = mean_ratio, group = 1, color = "Estimates from data"), linewidth = 0.8) +
+  geom_line(data = emp_plot, aes(x = age_bin, y = mean_ratio, group = 1, color = "Estimates from data"), linewidth = 1.3) +
   geom_point(data = emp_plot, aes(x = age_bin, y = mean_ratio, color = "Estimates from data"), size = 2) +
   geom_line(
     data = theo_045,
     aes(x = age, y = value, color = "Theoretical Function"),
     linetype = "dashed",
-    linewidth = 1
+    linewidth = 1.3
   ) +
   labs(
     x = "Age of secondary vegetation (years)",
-    y = expression("Ratio of maximum carbon density" == X[p]/(z[p] * gamma[p])),
-    title = "Carbon capture curve"
+    y = expression("Ratio of maximum carbon density" == X[p]/(z[p] * gamma[p]))
   ) +
   scale_color_manual(
-    values = c("Estimates from data" = "black", "Theoretical Function" = "blue"),
+    values = c("Estimates from data" = "black", "Theoretical Function" = "#0072B2"),
     breaks = c("Estimates from data", "Theoretical Function")
   ) +
+  guides(color = guide_legend(override.aes = list(linetype = c("solid", "dashed"), shape = c(16, NA)))) +
   scale_y_continuous(limits = c(0, NA), expand = expansion(mult = c(0, 0.05))) +
   theme_classic() +
   theme(legend.title = element_blank(), legend.position = "right")
 
-ggsave("output/figures/carbon_capture/gamma_secondary_vegetation.png",
+save_paper_plot("output/figures/carbon_capture/gamma_secondary_vegetation.png",
        p_main, width = 8.5, height = 6)
 
 cat("R2 =", m_dummy_summary$r.squared, "\n")

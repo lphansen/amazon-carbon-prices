@@ -8,6 +8,7 @@ from matplotlib.patches import Circle
 from matplotlib.patches import Rectangle
 import pandas as pd
 from pysrc.services.file_service import get_path
+from pysrc.analysis.publication import LINE_WIDTH, save_publication_figure
 
 def spatial_allocation(solver='gams',
                        pa=41.11,
@@ -102,8 +103,11 @@ def spatial_allocation(solver='gams',
     bin_edges = np.histogram_bin_edges(np.concatenate((positions_hmc_array[positions_hmc_array != 111], positions_det_array[positions_det_array != 111])), bins=40)
 
     plt.figure(figsize=(8, 6))
-    plt.hist(positions_hmc_array[positions_hmc_array != 111],  bins=bin_edges, color='red', alpha=0.6,label='ambiguity averse')
-    plt.hist(positions_det_array[positions_det_array != 111], bins=bin_edges, color='blue', alpha=0.6,label='ambiguity neutral')
+    plt.hist(positions_hmc_array[positions_hmc_array != 111], bins=bin_edges,
+             color='#D55E00', histtype='stepfilled', alpha=0.18,
+             edgecolor='none', linewidth=0, zorder=1)
+    plt.hist(positions_hmc_array[positions_hmc_array != 111],  bins=bin_edges, color='#D55E00', histtype='step', linestyle='--', linewidth=LINE_WIDTH, label='ambiguity averse', zorder=2)
+    plt.hist(positions_det_array[positions_det_array != 111], bins=bin_edges, color='#0072B2', histtype='step', linestyle='-', linewidth=LINE_WIDTH, label='ambiguity neutral', zorder=3)
     plt.xlabel("years (minus for deforestation)", fontsize=14)
     plt.ylabel("frequency", fontsize=14)
     if b==0:
@@ -111,8 +115,8 @@ def spatial_allocation(solver='gams',
     elif b==15:
         plt.xlim(0,40)
     plt.legend()
-    plt.savefig(os.path.join(output_folder, f"figures/decision_histogram_pehmc_{pe_hmc}_pedet_{pe_det}_xi_{xi}.png"))
-    plt.show()
+    save_publication_figure(plt.gcf(), os.path.join(output_folder, f"figures/decision_histogram_pehmc_{pe_hmc}_pedet_{pe_det}_xi_{xi}.png"))
+    plt.close()
 
 
     print(f"Pe_hmc is: {pe_hmc}, Pe_det is: {pe_det}, b is: {b}, xi is: {xi}")
@@ -125,4 +129,3 @@ def spatial_allocation(solver='gams',
 
     
     return
-

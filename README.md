@@ -1267,6 +1267,23 @@ local and Slurm runs.
   `Parameters from current iteration` vector, uses the second-to-last entry as
   `low -> low`, and uses one minus the last entry as `high -> high`.
 
+### Color vector PDFs readable in grayscale (1200 dpi export)
+
+The paper plotting code exports color PDFs with line styles, markers, and
+ordered-lightness map palettes that remain readable in grayscale. Export
+resolution is 1200 dpi for PNGs and rasterized elements; PDF vectors remain
+resolution-independent.
+To redraw from existing results without rerunning optimization, HMC, or HMM estimation:
+
+```bash
+.venv/bin/python -m pysrc.scripts.redraw_paper_figures --collect
+```
+
+This command defaults to PDF only and preserves the original PNGs in
+`results_in_paper/`. Use `--list` to inspect commands, or `--groups` to redraw
+selected figure groups. See [PDF figure rerun list](replication/PDF_FIGURES.md)
+for the figure-to-code mapping, R environment options, and cached-input details.
+
 ### Rights and License
 
 The code written for this replication package is released under the MIT License;

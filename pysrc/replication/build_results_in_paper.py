@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from pysrc.replication.paper_assets import (
     DEFAULT_PAPER_TEX,
     PAPER_FIGURE_INPUTS_FILE,
+    paper_figure_format_name,
     read_or_build_paper_figure_inputs,
     resolve_generated_figure,
 )
@@ -178,7 +179,7 @@ def _generated_table_name(name: str) -> str:
 
 def _generated_figure_name(figure: str, source: Path) -> str:
     figure_number = int(figure.removeprefix("Figure ").strip())
-    return f"Figure{figure_number}_{source.name}"
+    return paper_figure_format_name(f"Figure{figure_number}_{source.name}", source.suffix[1:])
 
 
 def _active_numeric_rows(path: Path) -> list[list[str]]:
@@ -244,34 +245,32 @@ def _copy_results_in_paper_figures(
     results_dir: Path,
     paper_tex: Path,
     figure_inputs_out: Path,
+    formats: tuple[str, ...] = ("png", "pdf"),
 ) -> pd.DataFrame:
     figure_inputs = read_or_build_paper_figure_inputs(paper_tex, figure_inputs_out)
 
     rows: list[dict[str, object]] = []
     for record in figure_inputs.to_dict("records"):
-        source = resolve_generated_figure(root, str(record["source_basename"]))
-        exhibit = str(record["exhibit"])
-        target = results_dir / _generated_figure_name(
-            exhibit,
-            source if source is not None else Path(str(record["source_basename"])),
-        )
-        copied = False
-        source_name = ""
-        if source is not None:
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
-            copied = True
-            source_name = str(source.relative_to(root))
-        rows.append(
-            {
+        basename = str(record["source_basename"])
+        for fmt in formats:
+            source = resolve_generated_figure(root, str(Path(basename).with_suffix("." + fmt)))
+            exhibit = str(record["exhibit"])
+            target = results_dir / _generated_figure_name(
+                exhibit, Path(basename).with_suffix("." + fmt),
+            )
+            copied = source is not None
+            if copied:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+            rows.append({
                 "figure_number": record["figure_number"],
                 "exhibit": exhibit,
                 "paper_include_path": record["paper_include_path"],
-                "source_file": source_name,
+                "source_file": str(source.relative_to(root)) if copied else "",
                 "generated_file": str(target.relative_to(root)),
                 "copied": copied,
-            }
-        )
+                "format": fmt,
+            })
     return pd.DataFrame(rows)
 
 
@@ -874,6 +873,9 @@ def main() -> int:
             "the figure manifest. Existing results_in_paper tables are left untouched."
         ),
     )
+    parser.add_argument("--figure-formats", nargs="+", choices=["png", "pdf"],
+                        default=["png", "pdf"],
+                        help="Figure formats to collect. Use pdf to preserve existing PNGs.")
     args = parser.parse_args()
 
     if args.figures_only:
@@ -882,14 +884,20 @@ def main() -> int:
             args.results_dir,
             args.paper_tex,
             args.figure_inputs_out,
+            tuple(args.figure_formats),
         )
+        copied_count = int(figure_manifest["copied"].sum()) if not figure_manifest.empty else 0
+        if args.figure_manifest_out.exists():
+            previous = pd.read_csv(args.figure_manifest_out).fillna("")
+            previous["format"] = previous["generated_file"].map(lambda name: Path(name).suffix[1:])
+            previous = previous[~previous["format"].isin(args.figure_formats)]
+            figure_manifest = pd.concat([previous, figure_manifest], ignore_index=True)
         args.figure_manifest_out.parent.mkdir(parents=True, exist_ok=True)
         figure_manifest.to_csv(
             args.figure_manifest_out,
             index=False,
             quoting=csv.QUOTE_MINIMAL,
         )
-        copied_count = int(figure_manifest["copied"].sum()) if not figure_manifest.empty else 0
         print(f"Copied {copied_count} results_in_paper figure files")
         print(f"Wrote results-in-paper figure manifest: {args.figure_manifest_out}")
         return 0
@@ -905,6 +913,7 @@ def main() -> int:
         args.results_dir,
         args.paper_tex,
         args.figure_inputs_out,
+        tuple(args.figure_formats),
     )
 
     if not args.keep_stale:
@@ -913,6 +922,10 @@ def main() -> int:
             for path in manifest["generated_file"].tolist()
             + figure_manifest["generated_file"].tolist()
         }
+        figure_paths = [args.root / path for path in figure_manifest["generated_file"]]
+        for path in figure_paths:
+            for fmt in {"png", "pdf"} - set(args.figure_formats):
+                keep_paths.add(path.with_name(paper_figure_format_name(path.name, fmt)))
         removed = _clean_results_dir(args.results_dir, keep_paths)
     else:
         removed = []
